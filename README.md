@@ -1,6 +1,5 @@
 # Meeland-hack-beta
-DISCLAIM:
-This script was created for educational use only; all testing was done on friends. I assume no responsibility for any illegal use of this script.
+DISCLAIM: This script is provided for educational purposes only. All testing was conducted in controlled and authorized environments. I do not take responsibility for any misuse or illegal use of this script.
 
 INSTRUCTION: Meeland.io: Under develop, at the moment there is Fly and AutoClose base
 Instruction:
