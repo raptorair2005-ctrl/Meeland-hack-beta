@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Meeland Chat Aware
 // @namespace    meeland-chat-aware
-// @version      6.4.0
-// @description  Meeland - Tasti disabilitati quando scrivi in chat
+// @version      13.0.0
+// @description  Meeland - Tasti disabilitati quando scrivi in chat + Noclip solo sbarre
 // @author       You
 // @match        *crazygames.com*
 // @match        *meeland.io*
@@ -44,7 +44,7 @@
     var KEYBINDS = [
         { key: 'M', action: 'Open/Close Menu' },
         { key: 'N', action: 'Toggle Noclip/Ghost Mode' },
-        { key: 'Shift', action: 'Speed Boost (+4x velocity)' },
+        { key: 'Shift', action: 'Super Speed Boost (x2) - Tieni premuto' },
         { key: 'Q', action: 'Teleport to Home' },
         { key: 'Z', action: 'Teleport Back to Previous Location' },
         { key: 'CapsLock', action: 'Blink Forward (8.75 units)' },
@@ -63,20 +63,17 @@
     }
 
     function isChatInputActive() {
-        // Controlla se la chat è attiva cercando input/textarea focussati
         var activeElement = document.activeElement;
         if (!activeElement) return MeelandState.isChatOpen;
         
         var tagName = activeElement.tagName.toLowerCase();
         var inputType = activeElement.getAttribute('type') || '';
         
-        // Se è input di tipo text/password o textarea, chat è attiva
         if ((tagName === 'input' && (inputType === 'text' || inputType === '')) ||
             tagName === 'textarea') {
             return true;
         }
         
-        // Cerca anche per class/id della chat
         if (activeElement.className && typeof activeElement.className === 'string') {
             if (activeElement.className.includes('chat') || 
                 activeElement.className.includes('input') ||
@@ -106,12 +103,14 @@
                     return;
                 }
                 
+                // Disabilita SOLO le sbarre/cancelli/barriere - NON il terreno
                 if (node.name && (node.name.includes('Wall') || node.name.includes('wall') || 
                                   node.name.includes('Barrier') || node.name.includes('barrier') ||
                                   node.name.includes('Gate') || node.name.includes('gate') ||
                                   node.name.includes('Door') || node.name.includes('door') ||
                                   node.name.includes('Fence') || node.name.includes('fence') ||
-                                  node.name.includes('Bar') || node.name.includes('bar'))) {
+                                  node.name.includes('Bar') || node.name.includes('bar') ||
+                                  node.name.includes('Sbarra') || node.name.includes('sbarra'))) {
                     
                     if (node.collision && node.collision.enabled) {
                         MeelandState.disabledBarriers.push({
@@ -446,13 +445,21 @@
             }(player);
             
             var teleBaseBtn = document.createElement('button');
-            teleBaseBtn.textContent = 'Go to Base';
+            teleBaseBtn.textContent = 'Go to Base (Safe)';
             teleBaseBtn.style.cssText = 'background: #ff6600; border: none; color: #fff; padding: 6px 10px; border-radius: 2px; cursor: pointer; font-size: 11px;';
             teleBaseBtn.onclick = function(p) {
                 return function() {
                     if (p.basePos) {
                         var myPlayer = getPlayer();
+                        MeelandState.tempWaypoint = myPlayer.getPosition().clone();
+                        
+                        if (!MeelandState.noclipEnabled) {
+                            enableNoclip();
+                            console.log('[Meeland] Noclip attivato automaticamente');
+                        }
+                        
                         teleport(myPlayer, p.basePos);
+                        console.log('[Meeland] Teleportato alla base di ' + (p.displayName || p.name) + ' - Noclip attivo per la protezione');
                     }
                 };
             }(player);
@@ -595,7 +602,7 @@
 
         var title = document.createElement('div');
         title.id = 'meeland-title';
-        title.textContent = 'MEELAND v6.4';
+        title.textContent = 'MEELAND v13.0';
         title.onclick = toggleMenu;
 
         var timer = document.createElement('div');
@@ -608,7 +615,7 @@
 
         var keys = document.createElement('div');
         keys.id = 'meeland-keys';
-        keys.innerHTML = 'M=Menu | N=Noclip | Shift=Speed<br>Q=Home | Z=Back | CapsLock=Blink<br>Space+Space=Fly | T=Chat';
+        keys.innerHTML = 'M=Menu | N=Noclip (Sbarre) | Shift=Super Speed (x2)<br>Q=Home | Z=Back | CapsLock=Blink<br>Space+Space=Fly | T=Chat';
 
         var menuBtn = document.createElement('button');
         menuBtn.id = 'meeland-menu-btn';
@@ -697,7 +704,6 @@
         tabContainer.appendChild(keybindsTab);
         menuPanel.appendChild(tabContainer);
 
-        // Settings Tab
         var settingsTab_content = document.createElement('div');
         settingsTab_content.id = 'meeland-settings-tab';
         settingsTab_content.className = 'meeland-tab-content active';
@@ -739,7 +745,6 @@
 
         menuPanel.appendChild(settingsTab_content);
 
-        // Teleport Tab
         var teleportTab_content = document.createElement('div');
         teleportTab_content.id = 'meeland-teleport-tab';
         teleportTab_content.className = 'meeland-tab-content';
@@ -776,7 +781,6 @@
 
         menuPanel.appendChild(teleportTab_content);
 
-        // Players Tab
         var playersTab_content = document.createElement('div');
         playersTab_content.id = 'meeland-players-tab';
         playersTab_content.className = 'meeland-tab-content';
@@ -792,7 +796,6 @@
 
         menuPanel.appendChild(playersTab_content);
 
-        // Keybinds Tab
         var keybindsTab_content = document.createElement('div');
         keybindsTab_content.id = 'meeland-keybinds-tab';
         keybindsTab_content.className = 'meeland-tab-content';
@@ -861,15 +864,9 @@
             } else {
                 updateTimerDisplay(null);
             }
-            if (MeelandState.speedBoostEnabled && MeelandState.settings.speedBoost) {
-                applySpeedBoost(player, 4);
-            } else {
-                resetSpeed(player);
-            }
         }, 50);
 
         document.addEventListener('keydown', function(e) {
-            // NON attivare funzioni se la chat è aperta
             if (isChatInputActive()) {
                 return;
             }
@@ -881,10 +878,6 @@
             if (e.key === 'n' || e.key === 'N') {
                 e.preventDefault();
                 toggleNoclip();
-            }
-            if (e.key === 'Shift' && !MeelandState.speedBoostEnabled && MeelandState.settings.speedBoost) {
-                MeelandState.speedBoostEnabled = true;
-                console.log('[Meeland] Speed ON');
             }
             if ((e.key === 'q' || e.key === 'Q') && MeelandState.homePos) {
                 MeelandState.tempWaypoint = player.getPosition().clone();
@@ -919,10 +912,6 @@
         }, true);
 
         document.addEventListener('keyup', function(e) {
-            if (e.key === 'Shift' && MeelandState.speedBoostEnabled) {
-                MeelandState.speedBoostEnabled = false;
-                console.log('[Meeland] Speed OFF');
-            }
             if (e.code === 'Space') MeelandState.flyingUp = false;
             if (e.code === 'KeyF') MeelandState.flyingDown = false;
         }, true);
@@ -967,4 +956,86 @@
             console.log('[Meeland] Error: Timeout');
         }
     }, 50);
+
+    // ===== SUPER VELOCITÀ x2 CON SHIFT =====
+    var shiftPressed = false;
+    var normalSpeed = null;
+    
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Shift') {
+            shiftPressed = true;
+            if (!isChatInputActive()) {
+                console.log('[Meeland] ⚡ SUPER VELOCITÀ ATTIVATA! (x2)');
+            }
+        }
+    }, true);
+    
+    document.addEventListener('keyup', function(e) {
+        if (e.key === 'Shift') {
+            shiftPressed = false;
+            console.log('[Meeland] Super velocità disattivata');
+        }
+    }, true);
+    
+    // Applica super velocità x2
+    setInterval(function() {
+        var player = getPlayer();
+        if (!player || !player.script || !player.script.scripts[0]) return;
+        
+        var mainScript = player.script.scripts[0];
+        
+        if (mainScript.currentSpeed !== undefined) {
+            if (shiftPressed && !isChatInputActive()) {
+                // Salva velocità normale e applica x2
+                if (normalSpeed === null) {
+                    normalSpeed = mainScript.currentSpeed;
+                }
+                mainScript.currentSpeed = normalSpeed * 2;
+            } else {
+                // Resetta alla velocità normale
+                if (normalSpeed !== null) {
+                    mainScript.currentSpeed = normalSpeed;
+                }
+            }
+        }
+    }, 16);
+
+    // ===== MANTIENI DISABILITATE SOLO LE SBARRE QUANDO NOCLIP ATTIVO =====
+    setInterval(function() {
+        if (MeelandState.noclipEnabled) {
+            try {
+                var root = window.pc.app.root;
+                
+                // Re-disabilita SOLO le sbarre se qualcuna è stata riabilitata
+                var reDisableBarriers = function(node, depth) {
+                    if (depth > 20) return;
+                    
+                    if (node.name && (node.name.includes('Wall') || node.name.includes('wall') || 
+                                      node.name.includes('Barrier') || node.name.includes('barrier') ||
+                                      node.name.includes('Gate') || node.name.includes('gate') ||
+                                      node.name.includes('Door') || node.name.includes('door') ||
+                                      node.name.includes('Fence') || node.name.includes('fence') ||
+                                      node.name.includes('Bar') || node.name.includes('bar') ||
+                                      node.name.includes('Sbarra') || node.name.includes('sbarra'))) {
+                        
+                        if (node.collision && node.collision.enabled) {
+                            node.collision.enabled = false;
+                        }
+                    }
+                    
+                    if (node.children) {
+                        for (var i = 0; i < node.children.length; i++) {
+                            reDisableBarriers(node.children[i], depth + 1);
+                        }
+                    }
+                };
+                
+                reDisableBarriers(root, 0);
+            } catch (e) {
+                console.error('[Meeland] Errore mantenimento noclip:', e.message);
+            }
+        }
+    }, 100);
+
+    console.log('[Meeland] v13.0 - Noclip Barriers Only Mode loaded!');
 })();
