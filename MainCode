@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Meeland Chat Aware
 // @namespace    meeland-chat-aware
-// @version      13.0.0
-// @description  Meeland - Tasti disabilitati quando scrivi in chat + Noclip solo sbarre
+// @version      14.0.0
+// @description  Meeland - Tasti disabilitati quando scrivi in chat + Teleport Q/Z modificato
 // @author       You
 // @match        *crazygames.com*
 // @match        *meeland.io*
@@ -32,6 +32,7 @@
         onlinePlayers: [],
         disabledBarriers: [],
         isChatOpen: false,
+        teleportWaypoint: null,
         settings: {
             autoLock: true,
             speedBoost: true,
@@ -45,8 +46,8 @@
         { key: 'M', action: 'Open/Close Menu' },
         { key: 'N', action: 'Toggle Noclip/Ghost Mode' },
         { key: 'Shift', action: 'Super Speed Boost (x2) - Tieni premuto' },
-        { key: 'Q', action: 'Teleport to Home' },
-        { key: 'Z', action: 'Teleport Back to Previous Location' },
+        { key: 'Q', action: 'Imposta punto di teletrasporto' },
+        { key: 'Z', action: 'Teletrasportati al punto impostato' },
         { key: 'CapsLock', action: 'Blink Forward (8.75 units)' },
         { key: 'Space (Single)', action: 'Jump' },
         { key: 'Space + Space', action: 'Enable Fly Mode' },
@@ -103,7 +104,6 @@
                     return;
                 }
                 
-                // Disabilita SOLO le sbarre/cancelli/barriere - NON il terreno
                 if (node.name && (node.name.includes('Wall') || node.name.includes('wall') || 
                                   node.name.includes('Barrier') || node.name.includes('barrier') ||
                                   node.name.includes('Gate') || node.name.includes('gate') ||
@@ -602,7 +602,7 @@
 
         var title = document.createElement('div');
         title.id = 'meeland-title';
-        title.textContent = 'MEELAND v13.0';
+        title.textContent = 'MEELAND v14.0';
         title.onclick = toggleMenu;
 
         var timer = document.createElement('div');
@@ -615,7 +615,7 @@
 
         var keys = document.createElement('div');
         keys.id = 'meeland-keys';
-        keys.innerHTML = 'M=Menu | N=Noclip (Sbarre) | Shift=Super Speed (x2)<br>Q=Home | Z=Back | CapsLock=Blink<br>Space+Space=Fly | T=Chat';
+        keys.innerHTML = 'M=Menu | N=Noclip (Sbarre) | Shift=Super Speed (x2)<br>Q=Imposta teleport | Z=Teleportati | CapsLock=Blink<br>Space+Space=Fly | T=Chat';
 
         var menuBtn = document.createElement('button');
         menuBtn.id = 'meeland-menu-btn';
@@ -879,12 +879,22 @@
                 e.preventDefault();
                 toggleNoclip();
             }
-            if ((e.key === 'q' || e.key === 'Q') && MeelandState.homePos) {
-                MeelandState.tempWaypoint = player.getPosition().clone();
-                teleport(player, MeelandState.homePos);
+            if (e.key === 'q' || e.key === 'Q') {
+                e.preventDefault();
+                var player = getPlayer();
+                if (player) {
+                    MeelandState.teleportWaypoint = player.getPosition().clone();
+                    console.log('[Meeland] 📍 Punto di teletrasporto impostato! X:' + MeelandState.teleportWaypoint.x.toFixed(2) + ' Y:' + MeelandState.teleportWaypoint.y.toFixed(2) + ' Z:' + MeelandState.teleportWaypoint.z.toFixed(2));
+                }
             }
-            if ((e.key === 'z' || e.key === 'Z') && MeelandState.tempWaypoint) {
-                teleport(player, MeelandState.tempWaypoint);
+            if (e.key === 'z' || e.key === 'Z') {
+                e.preventDefault();
+                var player = getPlayer();
+                if (MeelandState.teleportWaypoint && player) {
+                    teleport(player, MeelandState.teleportWaypoint);
+                } else if (!MeelandState.teleportWaypoint) {
+                    console.log('[Meeland] ⚠️ Nessun punto di teletrasporto impostato! Premi Q prima di Z');
+                }
             }
             if (e.key === 'CapsLock' && MeelandState.settings.teleport) {
                 e.preventDefault();
@@ -1037,5 +1047,5 @@
         }
     }, 100);
 
-    console.log('[Meeland] v13.0 - Noclip Barriers Only Mode loaded!');
+    console.log('[Meeland] v14.0 - Q/Z Teleport System loaded!');
 })();
