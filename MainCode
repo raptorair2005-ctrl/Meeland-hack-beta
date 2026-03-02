@@ -1,11 +1,12 @@
 // ==UserScript==
-// @name         Meeland Chat Aware
-// @namespace    meeland-chat-aware
-// @version      14.0.0
-// @description  Meeland - Tasti disabilitati quando scrivi in chat + Teleport Q/Z modificato
+// @name         Meeland Chat Aware - Universal
+// @namespace    meeland-chat-aware-universal
+// @version      16.0.0
+// @description  Meeland - Tasti disabilitati quando scrivi in chat + Volo riaggiunto
 // @author       You
-// @match        *crazygames.com*
 // @match        *meeland.io*
+// @match        *crazygames.com*
+// @match        *play.crazygames.com*
 // @run-at       document-end
 // @grant        none
 // ==/UserScript==
@@ -602,7 +603,7 @@
 
         var title = document.createElement('div');
         title.id = 'meeland-title';
-        title.textContent = 'MEELAND v14.0';
+        title.textContent = 'MEELAND v16.0';
         title.onclick = toggleMenu;
 
         var timer = document.createElement('div');
@@ -615,7 +616,7 @@
 
         var keys = document.createElement('div');
         keys.id = 'meeland-keys';
-        keys.innerHTML = 'M=Menu | N=Noclip (Sbarre) | Shift=Super Speed (x2)<br>Q=Imposta teleport | Z=Teleportati | CapsLock=Blink<br>Space+Space=Fly | T=Chat';
+        keys.innerHTML = 'M=Menu | N=Noclip (Sbarre) | Shift=Super Speed (x2)<br>Q=Imposta teleport | Z=Teleportati | CapsLock=Blink<br>Space+Space=Fly | Space(In Fly)=Up | F=Down';
 
         var menuBtn = document.createElement('button');
         menuBtn.id = 'meeland-menu-btn';
@@ -871,6 +872,9 @@
                 return;
             }
             
+            var player = getPlayer();
+            var camera = getCamera();
+            
             if (e.key === 'm' || e.key === 'M') {
                 e.preventDefault();
                 toggleMenu();
@@ -881,7 +885,6 @@
             }
             if (e.key === 'q' || e.key === 'Q') {
                 e.preventDefault();
-                var player = getPlayer();
                 if (player) {
                     MeelandState.teleportWaypoint = player.getPosition().clone();
                     console.log('[Meeland] 📍 Punto di teletrasporto impostato! X:' + MeelandState.teleportWaypoint.x.toFixed(2) + ' Y:' + MeelandState.teleportWaypoint.y.toFixed(2) + ' Z:' + MeelandState.teleportWaypoint.z.toFixed(2));
@@ -889,7 +892,6 @@
             }
             if (e.key === 'z' || e.key === 'Z') {
                 e.preventDefault();
-                var player = getPlayer();
                 if (MeelandState.teleportWaypoint && player) {
                     teleport(player, MeelandState.teleportWaypoint);
                 } else if (!MeelandState.teleportWaypoint) {
@@ -902,6 +904,7 @@
                 if (pos) teleport(player, pos);
             }
             if (e.code === 'Space' && MeelandState.settings.flyMode) {
+                e.preventDefault();
                 var kcc = player.script.kcc;
                 if (kcc) {
                     var now = Date.now();
@@ -911,12 +914,13 @@
                         MeelandState.flyModeActive = true;
                         kcc.gravity = 0;
                         MeelandState.flyingUp = true;
-                        console.log('[Meeland] Fly ON');
+                        console.log('[Meeland] ✈️ Fly MODE ATTIVATO!');
                     }
                     MeelandState.lastJumpTime = now;
                 }
             }
             if (e.code === 'KeyF' && MeelandState.flyModeActive && MeelandState.settings.flyMode) {
+                e.preventDefault();
                 MeelandState.flyingDown = true;
             }
         }, true);
@@ -928,6 +932,8 @@
 
         var flyLoop = setInterval(function() {
             if (!MeelandState.flyModeActive || !MeelandState.settings.flyMode) return;
+            var player = getPlayer();
+            if (!player) return;
             var kcc = player.script.kcc;
             if (!kcc) return;
             if (kcc._grounded) {
@@ -935,7 +941,7 @@
                 kcc.gravity = -30;
                 MeelandState.flyingUp = false;
                 MeelandState.flyingDown = false;
-                console.log('[Meeland] Fly OFF');
+                console.log('[Meeland] Fly MODE DISATTIVATO');
                 return;
             }
             if (MeelandState.flyingUp) {
@@ -963,7 +969,7 @@
             init();
         } else if (attempts > 400) {
             clearInterval(waitInterval);
-            console.log('[Meeland] Error: Timeout');
+            console.log('[Meeland] Error: Timeout - PlayCanvas non trovato');
         }
     }, 50);
 
@@ -1047,5 +1053,5 @@
         }
     }, 100);
 
-    console.log('[Meeland] v14.0 - Q/Z Teleport System loaded!');
+    console.log('[Meeland] v16.0 - Fly Mode Re-enabled!');
 })();
